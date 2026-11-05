@@ -38,6 +38,8 @@ def get_policy_intent(message: str, llm: LLM) -> PolicyQuestion:
         "arrependimento ou defeitos. Use other para preços ou disponibilidade "
         "de produtos e demais assuntos. Se misturar assuntos diferentes na "
         "mesma pergunta, use other para não responder só uma parte. "
+        "Se pedir exceção à política, aprovação individual ou decisão sobre "
+        "um caso específico, use other para encaminhar à equipe. "
         "O nome de um produto pode aparecer sem mudar o assunto da dúvida. "
         "Escolha também detail: para horário, use weekdays, saturday, "
         "sunday_holidays, whatsapp ou now quando a pergunta for específica; "

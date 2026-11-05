@@ -8,7 +8,9 @@ from llm import LLM
 
 
 SupportTopic = Literal[
-    "missing_product", "needs_clarification", "accessory", "out_of_scope", "store_other"
+    "missing_product", "needs_clarification", "accessory", "out_of_scope",
+    "store_location", "store_contact", "human_decision", "unavailable_information",
+    "store_other",
 ]
 
 
@@ -25,9 +27,16 @@ def classify_unhandled_question(message: str, llm: LLM) -> SupportTopic:
         "estiver vaga ou incompleta de outra forma. Use accessory se pedir "
         "cordas, palhetas, cabos, cases, pedais, amplificadores ou outros "
         "acessórios que a loja não vende. Use out_of_scope para assuntos sem "
-        "relação com a loja ou instrumentos musicais. Use store_other para "
-        "pedidos, reclamações ou outros assuntos da loja que exigem dados não "
-        "disponíveis neste atendimento. Responda somente pelo esquema.\n\n"
+        "relação com a loja ou instrumentos musicais. Use store_location "
+        "para perguntar onde fica a loja ou qual é o endereço. Use "
+        "store_contact para pedir o telefone, WhatsApp ou canal de contato. "
+        "Use human_decision para pedidos de exceção às regras, negociação, "
+        "aprovação individual, reclamação que exige decisão da equipe ou "
+        "pedido explícito para falar com um atendente. Use "
+        "unavailable_information para status de pedido, rastreamento, cálculo "
+        "de frete ou outra informação individual que não pode ser confirmada "
+        "neste atendimento. Use store_other para outros assuntos da loja sem "
+        "resposta disponível. Não invente fatos. Responda somente pelo esquema.\n\n"
         f"Mensagem do cliente: {message}"
     )
     response = llm.generate_structured_text(prompt, SupportQuestion)

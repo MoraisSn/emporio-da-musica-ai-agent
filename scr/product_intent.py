@@ -52,7 +52,8 @@ def extract_product_name(message: str, llm: LLM) -> str | None:
         "cite um produto, marque asks_price_or_availability como false. Se "
         "misturar assuntos, também marque false. Extraia somente uma marca, "
         "modelo ou nome comercial específico mencionado pelo cliente. Não "
-        "invente detalhes. Se a pessoa quiser um acessório para um modelo, "
+        "invente detalhes. Se pedir para falar com um atendente ou uma decisão "
+        "individual da loja, marque false. Se a pessoa quiser um acessório para um modelo, "
         "não trate isso como pergunta sobre o preço do instrumento. Uma categoria "
         "genérica, como 'violão', 'teclado' ou 'guitarra', não identifica um "
         "produto: nesse caso, use null. Exemplo: 'Quanto custa um violão?' "
@@ -85,8 +86,8 @@ def extract_category_price_filters(message: str, llm: LLM) -> CategoryPriceFilte
         "são buscas por produtos. Pedidos de acessórios como cordas, cabos, "
         "palhetas e cases também não são buscas de instrumentos. Se a mensagem "
         "pedir filtros diferentes, como "
-        "preço mínimo, marque is_product_search como false para não fazer uma "
-        "busca incompleta.\n\n"
+        "preço mínimo, ou pedir também decisão de um atendente, marque "
+        "is_product_search como false para não dar uma resposta parcial.\n\n"
         f"Mensagem do cliente: {message}"
     )
     response_text = llm.generate_structured_text(prompt, CategoryPriceFilters)

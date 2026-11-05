@@ -18,8 +18,13 @@ A Python terminal prototype for customer service at Empório da Música. The age
 - `scr/llm.py` defines the LLM interface and its Gemini implementation, with a recoverable error for API failures.
 - `scr/policies.py` contains opening-hours, payment, and return answers based on the supplied policy manual. `scr/policy_intent.py` identifies the topic and requested detail, so the terminal can answer a PIX, Saturday, or online-return question without returning the full policy text.
 - `scr/support_intent.py` classifies remaining messages to request missing details, explain unsupported accessory questions, or redirect out-of-scope questions to store topics.
+- `scr/store_info.py` keeps the store address and the WhatsApp contact used when a human decision is needed.
 
-The terminal currently handles the challenge's question-analysis stage: products, prices, availability, hours, payments, returns, ambiguous questions, and out-of-scope questions. Conversation follow-up and closure are later steps. Each customer message may require several Gemini calls, so replies can be slow; a temporary API failure produces a retry message and leaves the terminal running.
+The terminal handles products, prices, availability, hours, payments, returns, location, contact details, ambiguous questions, and out-of-scope questions. It uses consulted catalog or policy information for answers, states when an individual fact cannot be confirmed, and directs decisions requiring staff to the documented WhatsApp channel. It does not transfer a conversation or register a complaint automatically. Conversation follow-up and closure are later steps. Each customer message may require several Gemini calls, so replies can be slow; a temporary API failure produces a retry message and leaves the terminal running.
+
+## Human contact decision
+
+The policy manual lists `(67) 3341-4444` in the company details but identifies `(67) 3321-4500` specifically as the main remote WhatsApp support channel in section 7. For human handoff guidance, this prototype uses the section 7 WhatsApp number. The terminal only provides contact instructions; it has no WhatsApp integration. Order status and other individual facts are not yet connected to the provided operational CSV files, so the agent states that it cannot confirm them instead of guessing.
 
 ## Policy interpretation decision
 

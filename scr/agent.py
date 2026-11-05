@@ -6,6 +6,7 @@ from policies import get_opening_hours, get_payment_policy, get_return_policy
 from policy_intent import get_policy_intent
 from product_intent import extract_category_price_filters, extract_product_name
 from support_intent import classify_unhandled_question
+from store_info import HUMAN_WHATSAPP, STORE_ADDRESS, human_contact_guidance
 
 
 def analyze_product_by_name(name: str) -> dict:
@@ -144,7 +145,21 @@ def answer_unhandled_question(message: str, llm: LLM) -> str:
             "Só tenho informações sobre produtos e políticas do Empório da Música. "
             "Posso ajudar com alguma dúvida sobre a loja?"
         )
+    if topic == "store_location":
+        return f"A loja fica na {STORE_ADDRESS}"
+    if topic == "store_contact":
+        return f"O WhatsApp de atendimento da loja é {HUMAN_WHATSAPP}."
+    if topic == "human_decision":
+        return (
+            "Essa solicitação precisa ser avaliada pela equipe da loja. "
+            f"{human_contact_guidance()} Não consigo encaminhar a conversa por este terminal."
+        )
+    if topic == "unavailable_information":
+        return (
+            "Não consigo confirmar essa informação com os dados consultados aqui. "
+            f"{human_contact_guidance()}"
+        )
     return (
-        "Não tenho dados suficientes para confirmar isso aqui. Posso ajudar com "
-        "produtos, horários, pagamentos ou trocas e devoluções."
+        "Não encontrei informação suficiente para responder com segurança. "
+        f"{human_contact_guidance()}"
     )
