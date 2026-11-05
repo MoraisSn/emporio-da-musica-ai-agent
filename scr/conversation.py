@@ -48,3 +48,22 @@ def asks_for_human(message: str) -> bool:
         re.search(r"\b(quero|preciso|gostaria|prefiro)\b.{0,50}\b(atendente|humano|pessoa)\b", normalized)
         or re.search(r"\b(falar|conversar|transferir|chamar)\b.{0,50}\b(atendente|humano|pessoa|equipe)\b", normalized)
     )
+
+
+def indicates_end(message: str, awaiting_more_help: bool) -> bool:
+    """Encerra somente quando a mensagem indica o fim do atendimento."""
+    normalized = "".join(
+        char for char in normalize("NFKD", message.casefold()) if not combining(char)
+    )
+    normalized = " ".join(re.findall(r"\w+", normalized))
+
+    closing_phrases = {
+        "obrigado", "obrigada", "ok obrigado", "ok obrigada", "valeu",
+        "tchau", "ate mais", "ate logo", "era isso", "era so isso",
+        "por enquanto e so", "so isso", "pode encerrar", "sem mais duvidas",
+        "nao tenho mais duvidas", "nao preciso de mais nada",
+        "nao obrigado", "nao obrigada",
+    }
+    if normalized in closing_phrases:
+        return True
+    return awaiting_more_help and normalized in {"nao", "nada mais"}

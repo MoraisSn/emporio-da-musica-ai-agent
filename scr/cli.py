@@ -9,7 +9,7 @@ from agent import (
     get_policy_answer,
     search_products_with_filters,
 )
-from conversation import ConversationContext, asks_for_human
+from conversation import ConversationContext, asks_for_human, indicates_end
 from llm import GeminiLLM, LLMError
 from pydantic import ValidationError
 from store_info import human_contact_guidance
@@ -34,6 +34,7 @@ def main() -> None:
     has_introduced = False
     pending_products: list[dict] = []
     context = ConversationContext()
+    awaiting_more_help = False
     llm = GeminiLLM()
 
     while True:
@@ -46,9 +47,11 @@ def main() -> None:
             print("Tom: Escreva uma mensagem para continuar.")
             continue
 
-        if message.casefold() == "sair":
+        if message.casefold() == "sair" or indicates_end(message, awaiting_more_help):
             print("Tom: Obrigado pelo contato! Até mais.")
             break
+
+        awaiting_more_help = False
 
         if asks_for_human(message):
             introduction = ""
@@ -70,6 +73,7 @@ def main() -> None:
                 pending_products = []
                 context.remember_product(product["name"])
                 print(f"Tom: {offer_more_help(format_selected_product_response(product))}")
+                awaiting_more_help = True
                 continue
 
             if message.isdecimal():
@@ -84,6 +88,7 @@ def main() -> None:
             if matching_product is not None:
                 context.remember_product(matching_product["name"])
                 print(f"Tom: {offer_more_help(format_selected_product_response(matching_product))}")
+                awaiting_more_help = True
                 continue
 
         introduction = ""
@@ -108,6 +113,7 @@ def main() -> None:
                         else:
                             answer = offer_more_help(policy_answer.text)
                             context.remember_policy(policy_answer.topic)
+                            awaiting_more_help = True
                     else:
                         answer = format_product_search_results(search.products)
                         pending_products = search.products
@@ -120,6 +126,7 @@ def main() -> None:
                     elif result["outcome"] in {"available", "unavailable"}:
                         context.remember_product(result["product"]["name"])
                         answer = offer_more_help(answer)
+                        awaiting_more_help = True
                     else:
                         context.clear()
             except (LLMError, ValidationError):
