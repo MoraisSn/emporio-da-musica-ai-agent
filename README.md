@@ -13,6 +13,8 @@ Tom is the Empório da Música virtual attendant. He speaks in Brazilian Portugu
 3. Copy `.env.example` to `.env` and set `GEMINI_API_KEY`. The `.env` file is ignored by Git.
 4. Run `python scr/cli.py` from the project root. Type `sair` to end the conversation.
 
+Four sample conversations covering catalog lookup, policy application, human contact, and an out-of-scope request are in [`examples/conversations.md`](examples/conversations.md).
+
 ## Current implementation
 
 - `scr/cli.py` manages the terminal conversation and numbered product selection.
