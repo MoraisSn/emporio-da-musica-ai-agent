@@ -24,7 +24,9 @@ class PolicyQuestion(BaseModel):
     )
 
 
-def get_policy_intent(message: str, llm: LLM) -> PolicyQuestion:
+def get_policy_intent(
+    message: str, llm: LLM, previous_topic: PolicyTopic | None = None
+) -> PolicyQuestion:
     """Identifica o assunto e o detalhe perguntado em uma chamada ao Gemini."""
     if not message.strip():
         return PolicyQuestion(topic="other", detail="general")
@@ -48,7 +50,10 @@ def get_policy_intent(message: str, llm: LLM) -> PolicyQuestion:
         "preference ou return_exclusions. Use general se a pergunta for ampla ou pedir "
         "vários detalhes. Para other, use general. Não trate uma pergunta "
         "sobre cálculo do valor de parcelas como simples consulta de regras; "
-        "nesse caso, use other.\n\n"
+        "nesse caso, use other. Se a mensagem for uma continuação curta e "
+        "claramente se referir à política anterior, use o assunto anterior. "
+        "Ignore o assunto anterior se for uma nova pergunta independente.\n"
+        f"Política anterior: {previous_topic or 'nenhuma'}\n\n"
         f"Mensagem do cliente: {message}"
     )
     response_text = llm.generate_structured_text(prompt, PolicyQuestion)

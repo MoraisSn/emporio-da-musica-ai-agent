@@ -2,18 +2,21 @@
 
 from agent import (
     analyze_product_question,
-    answer_policy_question,
     answer_unhandled_question,
     format_product_response,
     format_product_search_results,
     format_selected_product_response,
-    search_products_by_message,
+    get_policy_answer,
+    search_products_with_filters,
 )
+from conversation import ConversationContext, asks_for_human
 from llm import GeminiLLM, LLMError
 from pydantic import ValidationError
+from store_info import human_contact_guidance
 
 
 GREETINGS = {"oi", "olá", "ola", "bom dia", "boa tarde", "boa noite"}
+FOLLOWUP_QUESTION = "Posso ajudar com mais alguma coisa?"
 
 
 def is_greeting_only(message: str) -> bool:
@@ -22,9 +25,15 @@ def is_greeting_only(message: str) -> bool:
     return normalized in GREETINGS
 
 
+def offer_more_help(answer: str) -> str:
+    """Convida a continuar após uma resposta completa."""
+    return f"{answer} {FOLLOWUP_QUESTION}"
+
+
 def main() -> None:
     has_introduced = False
     pending_products: list[dict] = []
+    context = ConversationContext()
     llm = GeminiLLM()
 
     while True:
@@ -41,12 +50,26 @@ def main() -> None:
             print("Tom: Obrigado pelo contato! Até mais.")
             break
 
+        if asks_for_human(message):
+            introduction = ""
+            if not has_introduced:
+                introduction = "Oi! Eu sou o Tom, assistente virtual do Empório da Música. "
+                has_introduced = True
+            pending_products = []
+            context.clear()
+            print(
+                f"Tom: {introduction}Claro. {human_contact_guidance()} "
+                "Não consigo transferir esta conversa pelo terminal."
+            )
+            continue
+
         if pending_products:
             valid_numbers = {str(number) for number in range(1, len(pending_products) + 1)}
             if message in valid_numbers:
                 product = pending_products[int(message) - 1]
                 pending_products = []
-                print(f"Tom: {format_selected_product_response(product)}")
+                context.remember_product(product["name"])
+                print(f"Tom: {offer_more_help(format_selected_product_response(product))}")
                 continue
 
             if message.isdecimal():
@@ -59,7 +82,8 @@ def main() -> None:
             )
             pending_products = []
             if matching_product is not None:
-                print(f"Tom: {format_selected_product_response(matching_product)}")
+                context.remember_product(matching_product["name"])
+                print(f"Tom: {offer_more_help(format_selected_product_response(matching_product))}")
                 continue
 
         introduction = ""
@@ -71,20 +95,33 @@ def main() -> None:
             print(f"Tom: {introduction}Como posso ajudar?")
         else:
             try:
-                result = analyze_product_question(message, llm)
+                result = analyze_product_question(message, llm, context.product_name)
                 if result is None:
-                    products = search_products_by_message(message, llm)
-                    if products is None:
-                        answer = answer_policy_question(message, llm)
-                        if answer is None:
+                    search = search_products_with_filters(
+                        message, llm, context.category, context.max_price_brl
+                    )
+                    if search is None:
+                        policy_answer = get_policy_answer(message, llm, context.policy_topic)
+                        if policy_answer is None:
                             answer = answer_unhandled_question(message, llm)
+                            context.clear()
+                        else:
+                            answer = offer_more_help(policy_answer.text)
+                            context.remember_policy(policy_answer.topic)
                     else:
-                        answer = format_product_search_results(products)
-                        pending_products = products
+                        answer = format_product_search_results(search.products)
+                        pending_products = search.products
+                        context.remember_search(search.category, search.max_price_brl)
                 else:
                     answer = format_product_response(result)
                     if result["outcome"] == "multiple_matches":
                         pending_products = result["products"]
+                        context.clear()
+                    elif result["outcome"] in {"available", "unavailable"}:
+                        context.remember_product(result["product"]["name"])
+                        answer = offer_more_help(answer)
+                    else:
+                        context.clear()
             except (LLMError, ValidationError):
                 answer = "Não consegui consultar agora. Pode tentar novamente em instantes?"
             print(f"Tom: {introduction}{answer}")

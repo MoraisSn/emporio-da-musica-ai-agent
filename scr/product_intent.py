@@ -41,7 +41,9 @@ def _normalize_price_brl(value: str) -> str:
     return f"{Decimal(amount):.2f}"
 
 
-def extract_product_name(message: str, llm: LLM) -> str | None:
+def extract_product_name(
+    message: str, llm: LLM, previous_product_name: str | None = None
+) -> str | None:
     """Extrai um produto específico de uma dúvida sobre preço ou disponibilidade."""
     if not message.strip():
         return None
@@ -58,7 +60,11 @@ def extract_product_name(message: str, llm: LLM) -> str | None:
         "genérica, como 'violão', 'teclado' ou 'guitarra', não identifica um "
         "produto: nesse caso, use null. Exemplo: 'Quanto custa um violão?' "
         "tem product_name null; 'Quanto custa o Takamine GD20?' tem "
-        "product_name 'Takamine GD20'.\n\n"
+        "product_name 'Takamine GD20'. Se houver um produto anterior e a "
+        "mensagem claramente se referir a ele, use esse nome para uma pergunta "
+        "sobre preço ou disponibilidade. Não use o contexto para uma pergunta "
+        "independente nem invente outro produto.\n"
+        f"Produto anterior: {previous_product_name or 'nenhum'}\n\n"
         f"Mensagem do cliente: {message}"
     )
     response_text = llm.generate_structured_text(prompt, ProductMention)
@@ -68,7 +74,12 @@ def extract_product_name(message: str, llm: LLM) -> str | None:
     return None
 
 
-def extract_category_price_filters(message: str, llm: LLM) -> CategoryPriceFilters | None:
+def extract_category_price_filters(
+    message: str,
+    llm: LLM,
+    previous_category: str | None = None,
+    previous_max_price_brl: str | None = None,
+) -> CategoryPriceFilters | None:
     """Extrai categoria e preço máximo de uma busca genérica por produtos."""
     if not message.strip():
         return None
@@ -87,7 +98,13 @@ def extract_category_price_filters(message: str, llm: LLM) -> CategoryPriceFilte
         "palhetas e cases também não são buscas de instrumentos. Se a mensagem "
         "pedir filtros diferentes, como "
         "preço mínimo, ou pedir também decisão de um atendente, marque "
-        "is_product_search como false para não dar uma resposta parcial.\n\n"
+        "is_product_search como false para não dar uma resposta parcial. "
+        "Se a mensagem for uma continuação clara da busca anterior e mudar "
+        "apenas o preço ou a categoria, mantenha o outro filtro anterior. "
+        "Para uma pergunta independente, ignore os filtros anteriores. "
+        "Não invente filtros.\n"
+        f"Categoria anterior: {previous_category or 'nenhuma'}\n"
+        f"Preço máximo anterior: {previous_max_price_brl or 'nenhum'}\n\n"
         f"Mensagem do cliente: {message}"
     )
     response_text = llm.generate_structured_text(prompt, CategoryPriceFilters)

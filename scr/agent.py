@@ -1,9 +1,10 @@
 from decimal import Decimal
+from dataclasses import dataclass
 
 from catalog import find_products_by_name, resolve_category_name, search_products
 from llm import LLM
 from policies import get_opening_hours, get_payment_policy, get_return_policy
-from policy_intent import get_policy_intent
+from policy_intent import PolicyTopic, get_policy_intent
 from product_intent import extract_category_price_filters, extract_product_name
 from support_intent import classify_unhandled_question
 from store_info import HUMAN_WHATSAPP, STORE_ADDRESS, human_contact_guidance
@@ -73,9 +74,11 @@ def format_product_search_results(products: list[dict]) -> str:
     )
 
 
-def analyze_product_question(message: str, llm: LLM) -> dict | None:
+def analyze_product_question(
+    message: str, llm: LLM, previous_product_name: str | None = None
+) -> dict | None:
     """Busca o produto citado em uma dúvida sobre preço ou disponibilidade."""
-    name = extract_product_name(message, llm)
+    name = extract_product_name(message, llm, previous_product_name)
     if name is None:
         return None
     return analyze_product_by_name(name)
@@ -87,9 +90,23 @@ def answer_product_question(message: str, llm: LLM) -> str | None:
         return None
     return format_product_response(result)
 
-def search_products_by_message(message: str, llm: LLM) -> list[dict] | None:
-    """Aplica ao catálogo a categoria e o preço máximo pedidos pelo cliente."""
-    filters = extract_category_price_filters(message, llm)
+@dataclass(frozen=True)
+class ProductSearch:
+    products: list[dict]
+    category: str | None
+    max_price_brl: str | None
+
+
+def search_products_with_filters(
+    message: str,
+    llm: LLM,
+    previous_category: str | None = None,
+    previous_max_price_brl: str | None = None,
+) -> ProductSearch | None:
+    """Consulta o catálogo e devolve os filtros usados para a próxima mensagem."""
+    filters = extract_category_price_filters(
+        message, llm, previous_category, previous_max_price_brl
+    )
     if filters is None:
         return None
 
@@ -100,7 +117,14 @@ def search_products_by_message(message: str, llm: LLM) -> list[dict] | None:
             return None
 
     max_price = Decimal(filters.max_price_brl) if filters.max_price_brl is not None else None
-    return search_products(category=category, max_price=max_price, include_status=True)
+    products = search_products(category=category, max_price=max_price, include_status=True)
+    return ProductSearch(products, category, filters.max_price_brl)
+
+
+def search_products_by_message(message: str, llm: LLM) -> list[dict] | None:
+    """Interface de busca para usos sem contexto de conversa."""
+    result = search_products_with_filters(message, llm)
+    return result.products if result is not None else None
 
 def answer_opening_hours_question(message: str, llm: LLM) -> str | None:
     """Responde com o horário padrão quando a dúvida for sobre atendimento."""
@@ -116,16 +140,30 @@ def answer_payment_question(message: str, llm: LLM) -> str | None:
         return None
     return get_payment_policy(intent.detail)
 
-def answer_policy_question(message: str, llm: LLM) -> str | None:
-    """Escolhe a resposta de política com uma única classificação."""
-    intent = get_policy_intent(message, llm)
+@dataclass(frozen=True)
+class PolicyAnswer:
+    text: str
+    topic: PolicyTopic
+
+
+def get_policy_answer(
+    message: str, llm: LLM, previous_topic: PolicyTopic | None = None
+) -> PolicyAnswer | None:
+    """Escolhe a resposta e identifica a política para continuar a conversa."""
+    intent = get_policy_intent(message, llm, previous_topic)
     if intent.topic == "opening_hours":
-        return get_opening_hours(intent.detail)
+        return PolicyAnswer(get_opening_hours(intent.detail), intent.topic)
     if intent.topic == "payment":
-        return get_payment_policy(intent.detail)
+        return PolicyAnswer(get_payment_policy(intent.detail), intent.topic)
     if intent.topic == "returns":
-        return get_return_policy(intent.detail)
+        return PolicyAnswer(get_return_policy(intent.detail), intent.topic)
     return None
+
+
+def answer_policy_question(message: str, llm: LLM) -> str | None:
+    """Mantém a interface simples para usos sem contexto de conversa."""
+    result = get_policy_answer(message, llm)
+    return result.text if result is not None else None
 
 
 def answer_unhandled_question(message: str, llm: LLM) -> str:

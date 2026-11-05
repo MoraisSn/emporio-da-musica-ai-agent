@@ -2,6 +2,10 @@
 
 A Python terminal prototype for customer service at Empório da Música. The agent, Tom, answers product and store-policy questions using the supplied catalog and policy manual. It uses Gemini to interpret customer messages and pandas to query the catalog.
 
+## Tom's persona
+
+Tom is the Empório da Música virtual attendant. He speaks in Brazilian Portuguese with a friendly, informal but professional tone, reflecting a music store that welcomes beginners and experienced musicians. He gives direct answers from the consulted catalog and store policies, asks for clarification when a question is incomplete, and says when he cannot confirm something. He does not invent prices, stock, order status, or exceptions to store rules. When a request needs a person's decision, he explains how to contact the team without pretending to transfer the conversation.
+
 ## Run locally
 
 1. Create and activate a Python virtual environment.
@@ -19,8 +23,9 @@ A Python terminal prototype for customer service at Empório da Música. The age
 - `scr/policies.py` contains opening-hours, payment, and return answers based on the supplied policy manual. `scr/policy_intent.py` identifies the topic and requested detail, so the terminal can answer a PIX, Saturday, or online-return question without returning the full policy text.
 - `scr/support_intent.py` classifies remaining messages to request missing details, explain unsupported accessory questions, or redirect out-of-scope questions to store topics.
 - `scr/store_info.py` keeps the store address and the WhatsApp contact used when a human decision is needed.
+- `scr/conversation.py` keeps the last resolved product, product-search filters, or policy topic in memory for follow-up questions and recognizes explicit requests for a human attendant.
 
-The terminal handles products, prices, availability, hours, payments, returns, location, contact details, ambiguous questions, and out-of-scope questions. It uses consulted catalog or policy information for answers, states when an individual fact cannot be confirmed, and directs decisions requiring staff to the documented WhatsApp channel. It does not transfer a conversation or register a complaint automatically. Conversation follow-up and closure are later steps. Each customer message may require several Gemini calls, so replies can be slow; a temporary API failure produces a retry message and leaves the terminal running.
+The terminal handles products, prices, availability, hours, payments, returns, location, contact details, ambiguous questions, and out-of-scope questions. It uses consulted catalog or policy information for answers, states when an individual fact cannot be confirmed, and directs decisions requiring staff to the documented WhatsApp channel. After a complete product or policy answer, Tom asks whether the customer needs more help. A follow-up can refer to the last resolved product, product-search filters, or policy topic; this context exists only in memory during the current terminal session. Explicit requests for a human take priority and receive contact instructions. The terminal does not transfer a conversation or register a complaint automatically. Conversation closure beyond the `sair` command is a later step. Each customer message may require several Gemini calls, so replies can be slow; a temporary API failure produces a retry message and leaves the terminal running.
 
 ## Human contact decision
 
